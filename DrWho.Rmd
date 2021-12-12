@@ -52,9 +52,9 @@ episodes %>%
   theme_tufte() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   labs(x = "",
-       y = "# of UK Viewers",
+       y = "# of UK Viewers (millions)",
        fill = "Season",
-       title = "UK Viewers per Episode of Dr. Who (Davies years")
+       title = "UK Viewers per Episode of Dr. Who (Davies years)")
 
 ```
 
