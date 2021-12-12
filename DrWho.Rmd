@@ -56,5 +56,32 @@ episodes %>%
        fill = "Season",
        title = "UK Viewers per Episode of Dr. Who (Davies years)")
 
+episodes %>%
+  filter(season_number <= 4) %>%
+  ggplot(aes(episode_title, rating)) +
+  geom_line(group = 1) +
+  geom_point(aes(color = factor(season_number))) +
+  theme_tufte() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "",
+       y = "Ave. Rating (IMDb)",
+       color = "Season",
+       title = "IMDb ratings of Dr. Who episode (Davies years)")
+
+
+episodes %>%
+  ggplot(aes(as.numeric(episode_title), rating)) +
+  geom_line(group = 1) +
+  geom_point(aes(color = factor(season_number))) +
+  geom_smooth(method = "loess") +
+  geom_text(aes(label = episode_title), hjust = 1, vjust = 1, check_overlap = TRUE) +
+  theme_tufte() +
+  theme(axis.text.x = element_blank()) +
+  labs(x = "",
+       y = "Ave. Rating (IMDb)",
+       color = "Season",
+       title = "IMDb ratings of Dr. Who episodes")
+
+
 ```
 
