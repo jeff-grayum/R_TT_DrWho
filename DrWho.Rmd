@@ -82,6 +82,46 @@ episodes %>%
        color = "Season",
        title = "IMDb ratings of Dr. Who episodes")
 
+episodes %>%
+  ggplot(aes(as.numeric(episode_title), uk_viewers, fill = factor(season_number))) +
+  geom_col() +
+  theme_tufte() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "",
+       y = "# of UK Viewers (millions)",
+       fill = "Season",
+       title = "UK Viewers per Episode of Dr. Who")
+```
 
+```{r}
+summarize_episodes <- function(tbl) {
+  tbl %>%
+    summarize(avg_rating = mean(rating, na.rm = TRUE),
+              avg_viewers = mean(uk_viewers, na.rm = TRUE),
+              n_episodes = n(),
+              t_test = list(broom::tidy(t.test(rating[!is.na(rating)])))) %>%
+    unnest(t_test)
+}
+
+episodes %>%
+  group_by(season_number) %>%
+  summarize_episodes()
+```
+
+
+```{r}
+episodes %>%
+  inner_join(writers, by = "story_number") %>%
+  group_by(writer = fct_lump(writer, 6)) %>%
+  summarize_episodes() %>%
+  arrange(desc(n_episodes)) %>%
+  mutate(writer = fct_reorder(writer, avg_rating)) %>%
+  ggplot(aes(avg_rating, writer)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.1) + 
+  geom_point() +
+  theme_tufte() +
+  labs(x = "Avg rating (95 % CI)",
+       y = "Writer",
+       title = "Most popular Dr. Who writers")
 ```
 
