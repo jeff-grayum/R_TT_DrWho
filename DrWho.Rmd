@@ -1,0 +1,60 @@
+---
+title: "Dr. Who"
+author: "Jeff Grayum"
+date: "12/12/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading libraries.
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggthemes)
+```
+
+Loading data.
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2021-11-23')
+
+writers <- tuesdata$writers
+
+directors <- tuesdata$directors
+
+episodes <- tuesdata$episodes %>%
+  select(-serial_title) %>%
+  fill(season_number) %>%
+  mutate(episode = paste0(season_number, ".", coalesce(as.character(episode_number, "X")), " ", episode_title),
+         episode = fct_reorder(episode, first_aired),
+         episode_title = fct_reorder(episode_title, first_aired))
+
+imdb <- tuesdata$imdb
+```
+
+First look.
+```{r}
+episodes %>%
+  view()
+
+episodes %>%
+  count(type)
+
+episodes %>%
+  filter(season_number <= 4) %>%
+  ggplot(aes(episode_title, uk_viewers, fill = factor(season_number))) +
+  geom_col() +
+  theme_tufte() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "",
+       y = "# of UK Viewers",
+       fill = "Season",
+       title = "UK Viewers per Episode of Dr. Who (Davies years")
+
+```
+
