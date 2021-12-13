@@ -17,6 +17,8 @@ library(tidyverse)
 library(tidytuesdayR)
 library(scales)
 library(ggthemes)
+library(splines)
+library(janitor)
 ```
 
 Loading data.
@@ -32,7 +34,8 @@ episodes <- tuesdata$episodes %>%
   fill(season_number) %>%
   mutate(episode = paste0(season_number, ".", coalesce(as.character(episode_number, "X")), " ", episode_title),
          episode = fct_reorder(episode, first_aired),
-         episode_title = fct_reorder(episode_title, first_aired))
+         episode_title = fct_reorder(episode_title, first_aired),
+         overall_episode_number = as.integer(episode_title))
 
 imdb <- tuesdata$imdb
 ```
@@ -123,5 +126,109 @@ episodes %>%
   labs(x = "Avg rating (95 % CI)",
        y = "Writer",
        title = "Most popular Dr. Who writers")
+```
+
+
+```{r}
+episodes %>%
+  inner_join(writers, by = "story_number") %>%
+  mutate(writer = fct_lump(writer, 6)) %>%
+  filter(writer != "Other") %>%
+  mutate(writer = fct_reorder(writer, as.integer(episode))) %>%
+  ggplot(aes(as.integer(episode), rating)) +
+  geom_point(color = "#003b6f", size = 2) +
+  geom_line(data = episodes, alpha = 0.25) +
+  facet_wrap(~ writer) +
+  labs(x = "Episode",
+      y = "Rating (IMDb)",
+      title = "Most popular writers on Dr. Who") +
+  theme_tufte()
+ 
+```
+
+How would we test writer talent statistically?
+```{r}
+episodes %>%
+  inner_join(writers, by = "story_number") %>%
+  mutate(writer = fct_lump(writer, 6)) %>%
+  view()
+
+writers_spread <- episodes %>%
+  inner_join(writers, by = "story_number") %>%
+  mutate(writer = fct_lump(writer, 6)) %>%
+  mutate(value = 1) %>%
+  spread(writer, value, fill = 0) %>%
+  janitor::clean_names()
+```
+
+```{r}
+#k = df!
+episodes %>%
+  ggplot(aes(overall_episode_number, rating)) +
+  geom_line() +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 3)) +
+  theme_tufte() +
+  labs(x = "Episode number",
+       y = "rating",
+       title = "Overall trend")
+
+
+lm(rating ~ overall_episode_number, episodes) %>%
+  summary()
+
+lm(rating ~ ns(overall_episode_number, 3), writers_spread) %>%
+  aov() %>%
+  summary()
+
+lm(rating ~ ns(overall_episode_number, 3) +
+   russell_t_davies,
+   writers_spread) %>%
+   aov() %>%
+   summary()
+
+lm(rating ~ ns(overall_episode_number, 3) +
+  russell_t_davies +
+   mark_gatiss +
+   chris_chibnall,
+   writers_spread) %>%
+   summary()
+
+lm(rating ~ ns(overall_episode_number, 3) +
+   russell_t_davies +
+   mark_gatiss +
+   chris_chibnall +
+   steven_moffat,
+   writers_spread) %>%
+   summary() 
+```
+
+Let's adjust scores relative to where they are in the series.
+```{r}
+episodes_no_na <- episodes %>%
+  filter(!is.na(rating))
+
+episode_predictions <- lm(rating ~ 
+  ns(overall_episode_number, 3), 
+  episodes_no_na) %>%
+  broom::augment(data = episodes_no_na) %>%
+  select(episode_title, story_number, rating, .fitted, .resid)
+#For Rose, we predicted 81.4 rating, actually had a 76.  Resid is difference between predicted score (based on time), and actual score.  
+
+#Let's sort by residuals and see what the best episode was relative to its time.
+episode_predictions %>%
+  arrange(desc(.resid))
+
+
+episode_predictions %>%
+  inner_join(writers, by = "story_number") %>%
+  mutate(writer = fct_lump(writer, 6),
+         writer = fct_reorder(writer, .resid)) %>%
+  filter(writer != "Other") %>%
+  ggplot(aes(.resid, writer)) +
+  geom_boxplot() +
+  geom_vline(aes(xintercept = 0), color = "#003b6f") +
+  theme_hc() +
+  labs(x = "Residual rating relative to position in series",
+       y = "Writer") 
 ```
 
